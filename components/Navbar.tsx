@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Volume2, VolumeX } from 'lucide-react';
-import { playHoverSound } from '../utils/sound';
+import { playHoverSound, toggleSoundEnabled, getSoundEnabled } from '../utils/sound';
 
 interface NavbarProps {
   onBack: () => void;
@@ -10,11 +10,11 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onBack, onForward, canGoBack, canGoForward }) => {
-  const [isSoundOn, setIsSoundOn] = useState(true);
+  const [isSoundOn, setIsSoundOn] = useState(getSoundEnabled());
 
   const toggleSound = () => {
-    setIsSoundOn(!isSoundOn);
-    // In a real app, this would toggle a global sound context or local storage preference
+    const newState = toggleSoundEnabled();
+    setIsSoundOn(newState);
   };
 
   return (
@@ -23,10 +23,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onBack, onForward, canGoBack, ca
         {/* Left Side: Back Button */}
         <button 
           onClick={onBack} 
-          onMouseEnter={isSoundOn ? playHoverSound : undefined}
+          onMouseEnter={playHoverSound}
           disabled={!canGoBack}
           className={`
-            w-12 h-12 flex items-center justify-center rounded-full transition-all duration-200 text-black
+            w-12 h-12 flex items-center justify-center rounded-[20px] transition-all duration-200 text-black
             ${canGoBack 
               ? 'bg-[#D9D9D9]/30 hover:bg-[#D9D9D9]/60 cursor-pointer' 
               : 'bg-[#D9D9D9]/10 cursor-default opacity-50'}
@@ -47,10 +47,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onBack, onForward, canGoBack, ca
           
           <button 
             onClick={onForward}
-            onMouseEnter={isSoundOn ? playHoverSound : undefined}
+            onMouseEnter={playHoverSound}
             disabled={!canGoForward}
             className={`
-              w-12 h-12 flex items-center justify-center rounded-full transition-all duration-200 text-black
+              w-12 h-12 flex items-center justify-center rounded-[20px] transition-all duration-200 text-black
               ${canGoForward 
                 ? 'bg-[#D9D9D9]/30 hover:bg-[#D9D9D9]/60 cursor-pointer' 
                 : 'bg-[#D9D9D9]/10 cursor-default opacity-50'}

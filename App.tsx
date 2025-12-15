@@ -391,6 +391,7 @@ export default function App() {
             category={selectedCategory || QuestionCategory.UX_DESIGN}
             questions={questions[selectedCategory!] || questions[QuestionCategory.UX_DESIGN]}
             onSelectQuestion={handleSelectQuestion}
+            onAddCustomQuestion={handleManualAddCustom}
           />
         );
       case View.QUESTION_FLOW:

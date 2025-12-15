@@ -156,6 +156,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
   // Timer & Playback
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playbackIsPlaying, setPlaybackIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Refs
@@ -172,13 +173,13 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
   // Timer Effect
   useEffect(() => {
     let interval: number;
-    if (flowState === 'RECORDING_VOICE' || flowState === 'RECORDING_CAMERA') {
+    if ((flowState === 'RECORDING_VOICE' || flowState === 'RECORDING_CAMERA') && !isPaused) {
         interval = window.setInterval(() => {
             setRecordingDuration(prev => prev + 1);
         }, 1000);
     }
     return () => clearInterval(interval);
-  }, [flowState]);
+  }, [flowState, isPaused]);
 
   // Clean up playback
   useEffect(() => {
@@ -197,27 +198,38 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
+      recognitionRef.current.lang = 'en-US'; // Set explicit language
 
       recognitionRef.current.onresult = (event: any) => {
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
+            finalTranscript += event.results[i][0].transcript + ' '; // Add space between segments
           }
         }
-        setTranscript(prev => prev + finalTranscript); 
+        if (finalTranscript) {
+             setTranscript(prev => prev + finalTranscript); 
+        }
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+          console.log("Speech recognition error", event.error);
+          if (event.error === 'no-speech') {
+              // Ignore no-speech errors, don't stop recording state
+          }
       };
       
       recognitionRef.current.onend = () => {
-         if (isRecordingMedia && recognitionRef.current) {
+         // Auto-restart if we are still recording and not paused
+         if (isRecordingMedia && recognitionRef.current && !isPaused && flowState !== 'REVIEW') {
              try {
                  recognitionRef.current.start();
-             } catch(e) { /* ignore */ }
+                 console.log("Restarted speech recognition");
+             } catch(e) { /* ignore already started */ }
          }
       };
     }
-  }, [isRecordingMedia]); 
+  }, [isRecordingMedia, isPaused, flowState]); 
 
   const startListening = () => {
     if (recognitionRef.current) {
@@ -243,6 +255,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
     setVoiceStream(null);
     setCameraStream(null);
     setRecordingDuration(0);
+    setIsPaused(false);
     
     const utter = new SpeechSynthesisUtterance(question.text);
     utter.rate = 1.0;
@@ -312,6 +325,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
 
       chunksRef.current = [];
       setRecordingDuration(0);
+      setIsPaused(false);
 
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -350,6 +364,24 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
        mediaRecorderRef.current.stop();
        setFlowState('REVIEW');
+    }
+  };
+
+  const togglePause = () => {
+    if (!mediaRecorderRef.current) return;
+    
+    if (isPaused) {
+        mediaRecorderRef.current.resume();
+        setIsPaused(false);
+        if (recognitionRef.current) {
+            try { recognitionRef.current.start(); } catch(e) {}
+        }
+    } else {
+        mediaRecorderRef.current.pause();
+        setIsPaused(true);
+        if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch(e) {}
+        }
     }
   };
 
@@ -519,11 +551,21 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
                  
                  {/* Voice Memo Pill */}
                  <div className="w-full bg-white border border-slate-200 rounded-full shadow-sm p-3 flex items-center justify-between">
-                     <div className="w-10 h-10 rounded-full border-2 border-[#1B6FF3] flex items-center justify-center text-[#1B6FF3] animate-pulse">
-                         <Square className="w-4 h-4 fill-current" />
-                     </div>
+                     {/* Move Pause Toggle Button Here */}
+                     <button
+                        onClick={togglePause}
+                        onMouseEnter={playHoverSound}
+                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all flex-shrink-0
+                            ${isPaused 
+                              ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' 
+                              : 'bg-red-100 text-red-600 hover:bg-red-200 animate-pulse'}
+                        `}
+                        title={isPaused ? "Resume Recording" : "Pause Recording"}
+                    >
+                        {isPaused ? <Mic className="w-6 h-6" /> : <Pause className="w-6 h-6 fill-current" />}
+                    </button>
                      <div className="flex-grow mx-4 h-10">
-                         {voiceStream && <AudioVisualizer stream={voiceStream} isRecording={true} />}
+                         {voiceStream && <AudioVisualizer stream={voiceStream} isRecording={!isPaused} />}
                      </div>
                      <div className="text-slate-900 font-mono font-medium min-w-[3rem] text-right">
                          {formatTime(recordingDuration)}
@@ -531,9 +573,10 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
                  </div>
              </div>
 
-             <div className="p-6 flex justify-start">
+             <div className="p-6 flex items-center justify-start space-x-6">
                 <button 
                    onClick={handleVoiceDone}
+                   onMouseEnter={playHoverSound}
                    className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-[20px] hover:bg-blue-700 transition-colors shadow-md text-lg"
                 >
                    Done
@@ -547,7 +590,14 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
           <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-[0_10px_30px_rgba(90,85,120,0.15)]">
              {/* INCREASED SIZE: aspect-[4/3] instead of aspect-video */}
              <div className="aspect-[4/3] bg-black relative w-full">
-                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
+                <video 
+                   ref={videoRef} 
+                   autoPlay 
+                   muted 
+                   playsInline 
+                   className="w-full h-full object-cover transform scale-x-[-1]" 
+                   style={{ filter: 'brightness(1.05) contrast(1.02) saturate(1.05) blur(0.3px)' }} // Automatic smooth skin filter
+                />
                 {flowState === 'RECORDING_CAMERA' && (
                   <div className="absolute top-4 right-4 flex items-center space-x-2 bg-red-600/80 text-white px-3 py-1 rounded-full text-xs font-bold">
                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
@@ -605,7 +655,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
              
              {recordedVideoUrl && (
                 <div className="aspect-video bg-black w-full">
-                    <video src={recordedVideoUrl} controls className="w-full h-full" />
+                    <video src={recordedVideoUrl} controls className="w-full h-full" style={{ filter: 'brightness(1.05) contrast(1.02) saturate(1.05) blur(0.3px)' }} />
                 </div>
              )}
 

@@ -1,5 +1,17 @@
 // Simple synth sound for "tin tin" metallic effect
+
+let isSoundEnabled = true;
+
+export const toggleSoundEnabled = () => {
+  isSoundEnabled = !isSoundEnabled;
+  return isSoundEnabled;
+};
+
+export const getSoundEnabled = () => isSoundEnabled;
+
 export const playHoverSound = () => {
+  if (!isSoundEnabled) return;
+
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContext) return;

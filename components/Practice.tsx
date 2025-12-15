@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
 import { QuestionCategory, Question } from '../types';
-import { Info } from 'lucide-react';
+import { Info, Plus } from 'lucide-react';
 import { playHoverSound } from '../utils/sound';
 
 interface PracticeProps {
   category: QuestionCategory;
   questions: Question[];
   onSelectQuestion: (question: Question) => void;
+  onAddCustomQuestion: () => void;
 }
 
-export const Practice: React.FC<PracticeProps> = ({ category, questions, onSelectQuestion }) => {
+export const Practice: React.FC<PracticeProps> = ({ category, questions, onSelectQuestion, onAddCustomQuestion }) => {
   const [activeFilter, setActiveFilter] = useState('All');
-  const filters = ['All', 'Background', 'Situational', 'Technical', 'Custom question'];
+  const filters = ['All', 'Background', 'Situational', 'Technical', 'Custom'];
 
   const filteredQuestions = questions.filter(q => {
     if (activeFilter === 'All') return true;
+    if (activeFilter === 'Custom') return q.type === 'Custom question';
     return q.type === activeFilter;
   });
 
@@ -69,7 +71,7 @@ export const Practice: React.FC<PracticeProps> = ({ category, questions, onSelec
                 'bg-yellow-100 text-yellow-800'}
             `}>
               <Info className="w-3 h-3 mr-1" />
-              {q.type} question
+              {q.type}
             </span>
             <h3 className="text-lg font-medium text-slate-800 leading-snug group-hover:text-blue-700 transition-colors">
               {q.text}
@@ -78,8 +80,21 @@ export const Practice: React.FC<PracticeProps> = ({ category, questions, onSelec
         ))}
         
         {filteredQuestions.length === 0 && (
-           <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-200 rounded-2xl">
-              <p>No questions found for the "{activeFilter}" filter.</p>
+           <div className="col-span-full py-12 flex flex-col items-center justify-center">
+              {activeFilter === 'Custom' ? (
+                <button 
+                  onMouseEnter={playHoverSound}
+                  onClick={onAddCustomQuestion}
+                  className="w-full max-w-md py-4 px-8 bg-blue-600 text-white text-xl font-medium rounded-[20px] hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center"
+                >
+                  {/* Removed small Plus icon here */}
+                  + Add custom question
+                </button>
+              ) : (
+                <div className="text-slate-500 border-2 border-dashed border-slate-200 rounded-2xl p-8">
+                   <p>No questions found for the "{activeFilter}" filter.</p>
+                </div>
+              )}
            </div>
         )}
       </div>
