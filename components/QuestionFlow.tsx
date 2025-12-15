@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Question, Recording } from '../types';
 import { Mic, Video, Keyboard, RefreshCcw, Edit2, Info, Check, ChevronDown, RotateCcw, Play, Pause, Square } from 'lucide-react';
 import { playHoverSound } from '../utils/sound';
+import { generateSpeech } from '../services/geminiService';
 
 interface QuestionFlowProps {
   question: Question;
@@ -11,6 +12,26 @@ interface QuestionFlowProps {
 }
 
 type FlowState = 'READING' | 'INPUT_SELECTION' | 'RECORDING_VOICE' | 'PREVIEW_CAMERA' | 'RECORDING_CAMERA' | 'TYPING' | 'REVIEW' | 'REDO_CONFIRM';
+
+// Helper to decode PCM audio from Gemini
+async function decodePCM(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number = 24000,
+  numChannels: number = 1
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
 
 // Audio Visualizer Component
 const AudioVisualizer = ({ stream, isRecording = true }: { stream: MediaStream | null, isRecording?: boolean }) => {
@@ -164,6 +185,10 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   
+  // TTS Refs
+  const ttsSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const ttsAudioContextRef = useRef<AudioContext | null>(null);
+  
   // Redo State
   const [nextRedoMode, setNextRedoMode] = useState<'voice' | 'camera' | 'typing' | null>(null);
   
@@ -256,20 +281,65 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
     setCameraStream(null);
     setRecordingDuration(0);
     setIsPaused(false);
-    
-    const utter = new SpeechSynthesisUtterance(question.text);
-    utter.rate = 1.0;
-    utter.onend = () => {
-       setFlowState(prev => prev === 'READING' ? 'INPUT_SELECTION' : prev);
+
+    let isMounted = true;
+
+    const playQuestionAudio = async () => {
+        const pcmData = await generateSpeech(question.text);
+        
+        if (!isMounted) return;
+
+        if (pcmData) {
+            try {
+                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                const ctx = new AudioContextClass({ sampleRate: 24000 });
+                ttsAudioContextRef.current = ctx;
+                
+                const audioBuffer = await decodePCM(pcmData, ctx);
+                const source = ctx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(ctx.destination);
+                
+                source.onended = () => {
+                   if (isMounted) setFlowState(prev => prev === 'READING' ? 'INPUT_SELECTION' : prev);
+                };
+                
+                ttsSourceRef.current = source;
+                source.start();
+            } catch (err) {
+                console.error("Gemini TTS playback failed, falling back to synthesis", err);
+                fallbackSynthesis();
+            }
+        } else {
+            fallbackSynthesis();
+        }
     };
     
-    setTimeout(() => {
+    const fallbackSynthesis = () => {
         window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(question.text);
+        utter.rate = 1.0; 
+        utter.onend = () => {
+           if (isMounted) setFlowState(prev => prev === 'READING' ? 'INPUT_SELECTION' : prev);
+        };
         window.speechSynthesis.speak(utter);
+    };
+    
+    // Small delay to allow transition
+    const timer = setTimeout(() => {
+        playQuestionAudio();
     }, 500);
 
     return () => {
+      isMounted = false;
+      clearTimeout(timer);
       window.speechSynthesis.cancel();
+      if (ttsSourceRef.current) {
+         try { ttsSourceRef.current.stop(); } catch(e) {}
+      }
+      if (ttsAudioContextRef.current && ttsAudioContextRef.current.state !== 'closed') {
+         ttsAudioContextRef.current.close();
+      }
       stopCamera();
       stopListening();
       if (voiceStream) voiceStream.getTracks().forEach(t => t.stop());
@@ -420,8 +490,47 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
         playbackAudioRef.current = null;
     }
     
-    const utter = new SpeechSynthesisUtterance(question.text);
-    utter.onend = () => {
+    // Trigger useEffect reload for reading
+    // But since the question is same, useEffect won't trigger if only dependent on question.
+    // However, the question prop doesn't change on redo.
+    // We should manually trigger the reading.
+    
+    window.speechSynthesis.cancel();
+    
+    const redoAction = async () => {
+        // Play audio again
+        const pcmData = await generateSpeech(question.text);
+        if (pcmData) {
+            try {
+                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                const ctx = new AudioContextClass({ sampleRate: 24000 });
+                ttsAudioContextRef.current = ctx;
+                const audioBuffer = await decodePCM(pcmData, ctx);
+                const source = ctx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(ctx.destination);
+                source.onended = () => {
+                   startNextMode();
+                };
+                ttsSourceRef.current = source;
+                source.start();
+            } catch {
+                fallbackRedoSpeech();
+            }
+        } else {
+            fallbackRedoSpeech();
+        }
+    };
+    
+    const fallbackRedoSpeech = () => {
+        const utter = new SpeechSynthesisUtterance(question.text);
+        utter.onend = () => {
+            startNextMode();
+        };
+        window.speechSynthesis.speak(utter);
+    };
+
+    const startNextMode = () => {
         if (mode === 'voice') {
             startRecording('audio');
         } else if (mode === 'camera') {
@@ -432,9 +541,8 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
             setFlowState('INPUT_SELECTION');
         }
     };
-    
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
+
+    redoAction();
   };
 
   const handlePlayPause = () => {
