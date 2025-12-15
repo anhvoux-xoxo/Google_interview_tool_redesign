@@ -48,8 +48,7 @@ const AudioVisualizer = ({ stream, isRecording = true }: { stream: MediaStream |
       if (analyser) {
         analyser.getByteFrequencyData(dataArray);
       } else {
-        // Fallback/Simulated data for static or playback if not hooked up to actual audio source yet
-        // For now, if no stream, just draw static flat line or random if needed
+        // Fallback/Simulated data
         for(let i=0; i<bufferLength; i++) dataArray[i] = 0; 
       }
       
@@ -59,30 +58,22 @@ const AudioVisualizer = ({ stream, isRecording = true }: { stream: MediaStream |
       const barWidth = 4;
       const gap = 4;
       const totalBars = Math.floor(canvas.width / (barWidth + gap));
-      
-      // Center the drawing
       const startX = (canvas.width - (totalBars * (barWidth + gap))) / 2;
 
       for(let i = 0; i < totalBars; i++) {
-        // Map i to dataArray index
         const dataIndex = Math.floor(i * (bufferLength / totalBars));
         const value = dataArray[dataIndex] || 0;
-        
-        // Calculate height
-        // Min height 4px
         const percent = value / 255;
         const height = Math.max(4, percent * canvas.height);
         
-        // Rounded caps
-        canvasCtx.fillStyle = '#C084FC'; // Purple-400 equivalent matching screenshot vibe
+        canvasCtx.fillStyle = '#C084FC';
         if (value > 10) {
-            canvasCtx.fillStyle = '#A855F7'; // Darker purple for active
+            canvasCtx.fillStyle = '#A855F7';
         }
 
         const x = startX + i * (barWidth + gap);
         const y = (canvas.height - height) / 2;
         
-        // Draw rounded rect
         canvasCtx.beginPath();
         canvasCtx.roundRect(x, y, barWidth, height, 4);
         canvasCtx.fill();
@@ -100,7 +91,7 @@ const AudioVisualizer = ({ stream, isRecording = true }: { stream: MediaStream |
   return <canvas ref={canvasRef} width={300} height={48} className="w-full h-full" />;
 };
 
-// Simple visualizer for playback (simulated)
+// Simple visualizer for playback
 const PlaybackVisualizer = ({ isPlaying }: { isPlaying: boolean }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     
@@ -124,13 +115,10 @@ const PlaybackVisualizer = ({ isPlaying }: { isPlaying: boolean }) => {
             step += 0.1;
 
             for(let i=0; i<totalBars; i++) {
-                // Generate a "wave" looking static or moving pattern
                 let height = 10;
                 if (isPlaying) {
-                    // Perlin-noise-ish simulation
                     height = 10 + Math.sin(i * 0.5 + step) * 10 + Math.random() * 10;
                 } else {
-                    // Static pattern
                     height = 10 + Math.sin(i * 0.5) * 8;
                 }
                 
@@ -159,7 +147,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
   
   // Media State
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null); // Dedicated voice stream
+  const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
   const [isRecordingMedia, setIsRecordingMedia] = useState(false);
@@ -174,7 +162,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   // Redo State
   const [nextRedoMode, setNextRedoMode] = useState<'voice' | 'camera' | 'typing' | null>(null);
@@ -189,14 +176,11 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
         interval = window.setInterval(() => {
             setRecordingDuration(prev => prev + 1);
         }, 1000);
-    } else {
-        // Reset if starting fresh? 
-        // We handle reset in startRecording
     }
     return () => clearInterval(interval);
   }, [flowState]);
 
-  // Clean up playback on unmount or state change
+  // Clean up playback
   useEffect(() => {
     return () => {
         if (playbackAudioRef.current) {
@@ -216,21 +200,13 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
       recognitionRef.current.lang = 'en-US';
 
       recognitionRef.current.onresult = (event: any) => {
-        let interimTranscript = '';
         let finalTranscript = '';
-
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
           }
         }
         setTranscript(prev => prev + finalTranscript); 
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        // console.error("Speech recognition error", event.error);
       };
       
       recognitionRef.current.onend = () => {
@@ -446,11 +422,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
       }
   };
 
-  const playVideoAudio = () => {
-      // For video, we might use the video element controls, but for review header button we can use this
-      // But typically video has its own controls.
-  };
-
   const formatTime = (seconds: number) => {
       const mins = Math.floor(seconds / 60);
       const secs = seconds % 60;
@@ -486,7 +457,8 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 flex flex-col min-h-[80vh]">
       
-      <div className="bg-white rounded-2xl p-8 mb-6 shadow-sm border border-slate-100">
+      {/* Question Card - Purple Tint Shadow */}
+      <div className="bg-white rounded-2xl p-8 mb-6 shadow-[0_10px_30px_rgba(90,85,120,0.15)] border border-slate-100">
         <span className={`
             inline-flex items-center px-2 py-1 rounded text-xs font-medium mb-4
             ${question.type === 'Background' ? 'bg-purple-100 text-purple-700' : 
@@ -515,7 +487,8 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
         )}
 
         {flowState === 'INPUT_SELECTION' && (
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm animate-fade-in">
+          // Purple Tint Shadow
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_10px_30px_rgba(90,85,120,0.15)] animate-fade-in">
              <div className="mb-6">
                 <h3 className={headerClass}>
                     Answer
@@ -531,7 +504,8 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
         )}
 
         {flowState === 'RECORDING_VOICE' && (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          // Purple Tint Shadow
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_10px_30px_rgba(90,85,120,0.15)] overflow-hidden">
              {/* Header Row */}
              <div className="flex flex-col p-6 border-b border-slate-100">
                  <h3 className={`${headerClass} mb-6`}>
@@ -543,7 +517,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
                     Recording your answer
                  </h3>
                  
-                 {/* Voice Memo Pill Component (Recording State) */}
+                 {/* Voice Memo Pill */}
                  <div className="w-full bg-white border border-slate-200 rounded-full shadow-sm p-3 flex items-center justify-between">
                      <div className="w-10 h-10 rounded-full border-2 border-[#1B6FF3] flex items-center justify-center text-[#1B6FF3] animate-pulse">
                          <Square className="w-4 h-4 fill-current" />
@@ -569,8 +543,10 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
         )}
 
         {(flowState === 'PREVIEW_CAMERA' || flowState === 'RECORDING_CAMERA') && (
-          <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
-             <div className="aspect-video bg-black relative">
+          // Purple Tint Shadow
+          <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-[0_10px_30px_rgba(90,85,120,0.15)]">
+             {/* INCREASED SIZE: aspect-[4/3] instead of aspect-video */}
+             <div className="aspect-[4/3] bg-black relative w-full">
                 <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
                 {flowState === 'RECORDING_CAMERA' && (
                   <div className="absolute top-4 right-4 flex items-center space-x-2 bg-red-600/80 text-white px-3 py-1 rounded-full text-xs font-bold">
@@ -600,18 +576,19 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
         )}
 
         {flowState === 'TYPING' && (
-           <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm h-96 flex flex-col">
+           // Purple Tint Shadow + White BG + Black Text
+           <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_10px_30px_rgba(90,85,120,0.15)] h-96 flex flex-col">
               <h3 className={`${headerClass} mb-4`}>
                 <Keyboard className="w-8 h-8 mr-3" /> Your answer
               </h3>
               <textarea 
                  value={transcript}
                  onChange={(e) => setTranscript(e.target.value)}
-                 className="flex-grow w-full resize-none border-none focus:ring-0 text-lg text-slate-700 placeholder:text-slate-300"
+                 className="flex-grow w-full resize-none border-none focus:ring-0 focus:outline-none text-lg text-black placeholder:text-slate-300 bg-white"
                  placeholder="Type your answer here..."
                  autoFocus
               />
-              <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <div className="pt-4 border-t border-slate-100 flex justify-start">
                  <button 
                    onClick={handleTypingDone}
                    className="px-6 py-2 bg-blue-600 text-white rounded-[20px] font-medium hover:bg-blue-700"
@@ -623,7 +600,8 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
         )}
 
         {flowState === 'REVIEW' && (
-           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+           // Purple Tint Shadow
+           <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_10px_30px_rgba(90,85,120,0.15)] overflow-hidden">
              
              {recordedVideoUrl && (
                 <div className="aspect-video bg-black w-full">
@@ -639,9 +617,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
                  <span className={headerClass}>Your answer</span>
                </div>
                
-               {/* If it's a Video, we show the simple Replay button. If Audio, we might show the player below? 
-                   Actually, let's keep the simple replay for Video, but for Audio use the new Player layout.
-               */}
                {recordedVideoUrl && (
                   <button 
                     onClick={() => {
@@ -656,7 +631,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
                )}
              </div>
 
-             {/* Audio Player in Review - Only if Audio */}
              {recordedAudioUrl && (
                  <div className="px-6 pt-4">
                      <div className="w-full bg-white border border-slate-200 rounded-full shadow-sm p-3 flex items-center justify-between">
@@ -681,11 +655,11 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
              )}
              
              {isContentExpanded && (
-                <div className="p-6 border-b border-slate-100 relative">
+                <div className="p-6 border-b border-slate-100 relative bg-white">
                   <textarea
                      value={transcript}
                      onChange={(e) => setTranscript(e.target.value)}
-                     className="w-full min-h-[120px] bg-transparent resize-none outline-none text-slate-700 text-lg leading-relaxed pr-8"
+                     className="w-full min-h-[120px] resize-none outline-none text-black text-lg leading-relaxed pr-8 bg-white"
                      placeholder="Transcripted"
                   />
                   <div className="absolute top-6 right-6 pointer-events-none text-blue-500">
@@ -706,7 +680,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ question, onComplete
         )}
 
         {flowState === 'REDO_CONFIRM' && (
-           <div className="mt-4 bg-white rounded-2xl p-8 border border-slate-100 shadow-lg animate-fade-in-up">
+           <div className="mt-4 bg-white rounded-2xl p-8 border border-slate-100 shadow-[0_10px_30px_rgba(90,85,120,0.15)] animate-fade-in-up">
               <h3 className="text-xl font-semibold text-slate-900 mb-2">Redo your answer?</h3>
               <p className="text-slate-600 mb-6">This will erase your current answer. Would you like to redo it?</p>
               

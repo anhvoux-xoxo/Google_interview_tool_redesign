@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Info, Edit2 } from 'lucide-react';
+import { Info, Edit2, ChevronDown } from 'lucide-react';
 import { playHoverSound } from '../utils/sound';
 
 interface CustomQuestionInputProps {
@@ -12,28 +12,23 @@ export const CustomQuestionInput: React.FC<CustomQuestionInputProps> = ({ onAdd 
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-3xl p-8 shadow-sm">
+      {/* Updated shadow with Purple Tint */}
+      <div className="bg-white rounded-3xl p-8 shadow-[0_10px_30px_rgba(90,85,120,0.15)]">
         <span className="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium mb-6">
           <Info className="w-3 h-3 mr-2" />
           Custom question
         </span>
 
         <div className="relative mb-8 flex items-center">
-            {/* Updated border style: Black border only */}
+            {/* Input with white bg and black text, no blue focus ring */}
             <input
             type="text"
             value={questionText}
             onChange={(e) => setQuestionText(e.target.value)}
             placeholder="Type your question here"
-            className="w-full text-2xl md:text-3xl font-medium text-slate-900 placeholder:text-slate-300 border border-black focus:border-black focus:ring-0 p-4 rounded-xl bg-transparent"
+            className="w-full text-2xl md:text-3xl font-medium text-black placeholder:text-slate-300 border border-black focus:border-black focus:ring-0 focus:outline-none p-4 rounded-xl bg-white"
             autoFocus
             />
-            {/* Pen icon removed from inside input as per "Manually Add Question" section instructions which implies only black border? 
-                Wait, "the pen icon in the type your question here must be the same icon design and layout with the pen below it" was previous.
-                New instruction: "When user clicks into the text input field -> Show black border only -> Remove the current styled border design"
-                It doesn't say remove the icon. I'll keep icon outside or positioned. The previous design had an icon. 
-                I will align it with the input.
-            */}
              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                 <Edit2 className="w-6 h-6 text-slate-400" />
             </div>
@@ -42,22 +37,23 @@ export const CustomQuestionInput: React.FC<CustomQuestionInputProps> = ({ onAdd 
         <div className="border-t border-slate-200 pt-6 mb-8">
           <div className="flex items-center justify-between text-slate-800 mb-4">
             <div className="flex items-center text-lg font-medium">
-               <svg className="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h8m-8 6h16" />
-               </svg>
+               <ChevronDown className="w-5 h-5 mr-3" />
                Your answer
-            </div>
-            <div className="p-2 border border-blue-500 rounded-lg text-blue-500">
-              <Edit2 className="w-5 h-5" />
             </div>
           </div>
           
-          <textarea
-             value={answerText}
-             onChange={(e) => setAnswerText(e.target.value)}
-             className="w-full min-h-[120px] bg-slate-50 rounded-xl p-4 border-none resize-none focus:ring-1 focus:ring-blue-200 text-slate-700 placeholder:text-slate-400"
-             placeholder="Type your answer here..."
-          />
+          {/* Textarea with white bg, black text, icon inside, and no blue focus ring */}
+          <div className="relative">
+            <textarea
+               value={answerText}
+               onChange={(e) => setAnswerText(e.target.value)}
+               className="w-full min-h-[120px] bg-white rounded-xl p-4 border border-slate-200 resize-none focus:outline-none focus:border-slate-400 text-black placeholder:text-slate-400 pr-10"
+               placeholder="Type your answer here..."
+            />
+            <div className="absolute top-4 right-4 pointer-events-none text-blue-500">
+               <Edit2 className="w-5 h-5" />
+            </div>
+          </div>
         </div>
 
         <button

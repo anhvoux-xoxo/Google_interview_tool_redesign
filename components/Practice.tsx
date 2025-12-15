@@ -49,7 +49,8 @@ export const Practice: React.FC<PracticeProps> = ({ category, questions, onSelec
             key={q.id}
             onMouseEnter={playHoverSound}
             onClick={() => onSelectQuestion(q)}
-            className="group cursor-pointer bg-white p-6 rounded-2xl border border-white shadow-sm hover:shadow-md transition-all h-full min-h-[160px] flex flex-col items-start"
+            // Updated shadow to soft diffused shadow with ambient hover glow (Purple Tinted)
+            className="group cursor-pointer bg-white p-6 rounded-2xl border border-transparent shadow-[0_10px_30px_rgba(90,85,120,0.15)] hover:shadow-[0_16px_40px_rgba(165,155,250,0.22)] transition-all h-full min-h-[160px] flex flex-col items-start"
           >
             <span className={`
               inline-flex items-center px-2 py-1 rounded-md text-xs font-medium mb-4
