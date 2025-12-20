@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, Recording } from '../types';
-import { Mic, Video, Keyboard, Edit2, Info, ChevronDown, RotateCcw, Play, Pause, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Mic, Video, Keyboard, Edit2, Info, ChevronDown, RotateCcw, Play, Pause, ArrowRight, ArrowLeft, Loader2, Lightbulb } from 'lucide-react';
 import { playHoverSound } from '../utils/sound';
-import { generateSpeech, transcribeAudio } from '../services/geminiService';
+import { generateSpeech, transcribeAudio, getAiSuggestion } from '../services/geminiService';
 
 interface QuestionFlowProps {
   question: Question;
@@ -173,6 +173,8 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({
   const [flowState, setFlowState] = useState<FlowState>('READING');
   const [transcript, setTranscript] = useState('');
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null);
@@ -215,6 +217,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({
   useEffect(() => {
     setFlowState('READING');
     setTranscript('');
+    setSuggestion(null);
     setRecordedVideoUrl(null);
     setRecordedAudioUrl(null);
     setVoiceStream(null);
@@ -262,7 +265,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({
     
     const timer = setTimeout(() => {
         playQuestionAudio();
-    }, 500);
+    }, 1000); // 1 second delay after clicking start/selecting card
 
     return () => {
       isMounted = false;
@@ -273,6 +276,14 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({
       stopCamera();
     };
   }, [question]);
+
+  const handleGetSuggestion = async () => {
+    if (isLoadingSuggestion) return;
+    setIsLoadingSuggestion(true);
+    const res = await getAiSuggestion(question.text);
+    setSuggestion(res);
+    setIsLoadingSuggestion(false);
+  };
 
   const startCamera = async () => {
     try {
@@ -321,7 +332,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({
          if (mode === 'video') setRecordedVideoUrl(url);
          else setRecordedAudioUrl(url);
          
-         // Start transcription with Gemini
          setIsTranscribing(true);
          const reader = new FileReader();
          reader.readAsDataURL(blob);
@@ -405,7 +415,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 flex flex-col min-h-[80vh]">
       
-      {/* Session Progress & Navigation Indicator */}
       {sessionIndex !== undefined && sessionTotal !== undefined && (
         <div className="mb-4 flex items-center justify-between">
            <div className="flex items-center space-x-4">
@@ -439,7 +448,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({
         </div>
       )}
 
-      {/* Question Card */}
       <div className="bg-white rounded-2xl p-8 mb-6 shadow-[0_10px_30px_rgba(90,85,120,0.15)] border border-slate-100">
         <span className={`
             inline-flex items-center px-2 py-1 rounded text-xs font-medium mb-4
@@ -472,17 +480,44 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({
           <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_10px_30px_rgba(90,85,120,0.15)] animate-fade-in flex flex-col">
              <div className="mb-6"><h3 className={headerClass}>Your answer</h3></div>
              
-             {/* Show Pre-provided answer if exists */}
-             {question.answer && (
-                <div className="w-full bg-slate-50 rounded-xl p-6 border border-slate-200 mb-8 relative group">
-                    <p className="text-slate-700 text-lg leading-relaxed italic">"{question.answer}"</p>
+             {suggestion && (
+                <div className="mb-6 p-6 bg-amber-50 rounded-xl border border-amber-200 animate-fade-in">
+                  <div className="flex items-center text-amber-800 font-semibold mb-2">
+                    <Lightbulb className="w-5 h-5 mr-2" />
+                    Key Points for your answer
+                  </div>
+                  <div className="text-amber-900 text-sm whitespace-pre-wrap leading-relaxed">
+                    {suggestion}
+                  </div>
                 </div>
              )}
 
-             <div className="flex space-x-4 pl-0">
-                <ActionButton icon={Mic} onClick={() => startRecording('audio')} />
-                <ActionButton icon={Video} onClick={() => setFlowState('PREVIEW_CAMERA')} />
-                <ActionButton icon={Keyboard} onClick={() => setFlowState('TYPING')} />
+             {isLoadingSuggestion && (
+               <div className="mb-6 p-6 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin mr-3" />
+                  <span className="text-slate-600 font-medium">Getting key points...</span>
+               </div>
+             )}
+
+             <div className="flex items-center justify-between">
+                <div className="flex space-x-4">
+                    <ActionButton icon={Mic} onClick={() => startRecording('audio')} title="Voice" />
+                    <ActionButton icon={Video} onClick={() => setFlowState('PREVIEW_CAMERA')} title="Camera" />
+                    <ActionButton icon={Keyboard} onClick={() => setFlowState('TYPING')} title="Type" />
+                </div>
+                <button 
+                  onClick={handleGetSuggestion}
+                  onMouseEnter={playHoverSound}
+                  disabled={isLoadingSuggestion}
+                  className={`
+                    w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200
+                    bg-amber-100 text-amber-600 border border-amber-200 hover:bg-amber-200
+                    ${isLoadingSuggestion ? 'opacity-50 cursor-not-allowed' : ''}
+                  `}
+                  title="Get key points"
+                >
+                  <Lightbulb className="w-6 h-6" />
+                </button>
              </div>
           </div>
         )}
@@ -546,8 +581,8 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({
              {recordedVideoUrl && <div className="aspect-video bg-black w-full"><video src={recordedVideoUrl} controls className="w-full h-full" style={{ filter: 'brightness(1.05) contrast(1.02) saturate(1.05) blur(0.3px)' }} /></div>}
              
              <div className="flex items-center justify-between p-6 border-b border-slate-100">
-               <div className="flex items-center cursor-pointer" onClick={() => setIsContentExpanded(!isContentExpanded)}>
-                 <div className={`mr-3 text-slate-800 transition-transform duration-200 ${isContentExpanded ? 'rotate-180' : ''}`}><ChevronDown className="w-6 h-6" /></div>
+               <div className="flex items-center cursor-pointer">
+                 <div className="mr-3 text-slate-800"><ChevronDown className="w-6 h-6" /></div>
                  <span className={headerClass}>Your answer</span>
                </div>
              </div>
