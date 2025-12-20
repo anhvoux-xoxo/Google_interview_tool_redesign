@@ -20,6 +20,7 @@ export interface Question {
   text: string;
   category: QuestionCategory;
   type: 'Background' | 'Situational' | 'Technical' | 'Custom question';
+  answer?: string; // Optional answer for custom questions
 }
 
 export interface Recording {

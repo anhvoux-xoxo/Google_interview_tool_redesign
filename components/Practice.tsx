@@ -39,8 +39,8 @@ export const Practice: React.FC<PracticeProps> = ({ category, questions, onSelec
               className={`
                 px-5 py-2 rounded-full text-sm font-medium transition-colors border
                 ${isActive
-                  ? 'bg-blue-600 text-white border-blue-600' 
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-[0_4px_12px_rgba(37,99,235,0.3)]' 
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-blue-200 hover:text-blue-600'}
               `}
             >
               {filter} 
@@ -60,8 +60,7 @@ export const Practice: React.FC<PracticeProps> = ({ category, questions, onSelec
             key={q.id}
             onMouseEnter={playHoverSound}
             onClick={() => onSelectQuestion(q)}
-            // Updated shadow to soft diffused shadow with ambient hover glow (Purple Tinted)
-            className="group cursor-pointer bg-white p-6 rounded-2xl border border-transparent shadow-[0_10px_30px_rgba(90,85,120,0.15)] hover:shadow-[0_16px_40px_rgba(165,155,250,0.22)] transition-all h-full min-h-[160px] flex flex-col items-start"
+            className="group cursor-pointer bg-white p-6 rounded-2xl border border-transparent shadow-[0_10px_30px_rgba(90,85,120,0.15)] hover:shadow-[0_16px_40px_rgba(165,155,250,0.22)] hover:border-blue-100 transition-all h-full min-h-[160px] flex flex-col items-start"
           >
             <span className={`
               inline-flex items-center px-2 py-1 rounded-md text-xs font-medium mb-4
@@ -79,22 +78,23 @@ export const Practice: React.FC<PracticeProps> = ({ category, questions, onSelec
           </div>
         ))}
         
-        {filteredQuestions.length === 0 && (
+        {/* Always show Add button in Custom filter */}
+        {activeFilter === 'Custom' && (
+          <button 
+            onMouseEnter={playHoverSound}
+            onClick={onAddCustomQuestion}
+            className="group cursor-pointer bg-blue-50 p-6 rounded-2xl border-2 border-dashed border-blue-200 hover:border-blue-400 hover:bg-blue-100 transition-all h-full min-h-[160px] flex flex-col items-center justify-center text-blue-600"
+          >
+            <Plus className="w-10 h-10 mb-2 group-hover:scale-110 transition-transform" />
+            <span className="font-semibold text-lg">Add custom question</span>
+          </button>
+        )}
+
+        {filteredQuestions.length === 0 && activeFilter !== 'Custom' && (
            <div className="col-span-full py-12 flex flex-col items-center justify-center">
-              {activeFilter === 'Custom' ? (
-                <button 
-                  onMouseEnter={playHoverSound}
-                  onClick={onAddCustomQuestion}
-                  className="w-full max-w-md py-4 px-8 bg-blue-600 text-white text-xl font-medium rounded-[20px] hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center"
-                >
-                  {/* Removed small Plus icon here */}
-                  + Add custom question
-                </button>
-              ) : (
-                <div className="text-slate-500 border-2 border-dashed border-slate-200 rounded-2xl p-8">
-                   <p>No questions found for the "{activeFilter}" filter.</p>
-                </div>
-              )}
+              <div className="text-slate-500 border-2 border-dashed border-slate-200 rounded-2xl p-8">
+                 <p>No questions found for the "{activeFilter}" filter.</p>
+              </div>
            </div>
         )}
       </div>

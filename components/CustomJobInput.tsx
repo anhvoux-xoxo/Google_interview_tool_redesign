@@ -1,10 +1,12 @@
+
 import React, { useState } from 'react';
 import { playHoverSound } from '../utils/sound';
 import { generateQuestions } from '../services/geminiService';
 import { ArrowRight, Loader2 } from 'lucide-react';
 
+// Fix: Updated onStart type to receive the structured question objects instead of string[]
 interface CustomJobInputProps {
-  onStart: (description: string, questions: string[]) => void;
+  onStart: (description: string, questions: { text: string; type: string }[]) => void;
   onManualAdd: () => void;
 }
 

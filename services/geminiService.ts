@@ -1,13 +1,10 @@
-import { GoogleGenAI, Modality } from "@google/genai";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+import { GoogleGenAI, Modality, Type } from "@google/genai";
+
+// Fix: Initializing GoogleGenAI with a named parameter using process.env.API_KEY as per the guidelines
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const getAiSuggestion = async (question: string): Promise<string> => {
-  if (!apiKey) {
-    return "API Key is missing. Please check your configuration.";
-  }
-
   try {
     const prompt = `
       You are an expert interview coach. 
@@ -22,7 +19,7 @@ export const getAiSuggestion = async (question: string): Promise<string> => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
     });
 
@@ -33,54 +30,54 @@ export const getAiSuggestion = async (question: string): Promise<string> => {
   }
 };
 
-export const generateQuestions = async (jobDescription: string): Promise<string[]> => {
-  if (!apiKey) {
-    console.warn("API Key missing, returning mock questions");
-    return [
-      "Tell me about a time you handled a difficult stakeholder.",
-      "How do you prioritize your tasks?",
-      "Describe a project where you had to learn a new technology.",
-      "What is your greatest professional achievement?",
-      "How do you handle feedback?"
-    ];
-  }
-
+export const generateQuestions = async (jobDescription: string): Promise<{text: string, type: string}[]> => {
   try {
     const prompt = `
       Based on the following job description, generate exactly 5 interview questions.
-      Return ONLY a JSON array of strings. Do not include markdown formatting or "json" tags.
+      Categorize each question as either 'Background', 'Situational', or 'Technical'.
+      Return ONLY a JSON array of objects with "text" and "type" keys.
       
       Job Description: "${jobDescription}"
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
-        responseMimeType: 'application/json'
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              text: { type: Type.STRING },
+              type: { type: Type.STRING, description: "One of: Background, Situational, Technical" }
+            },
+            required: ["text", "type"]
+          }
+        }
       }
     });
 
     const text = response.text;
     if (!text) return [];
     
-    // Parse the JSON array
     const questions = JSON.parse(text);
     return Array.isArray(questions) ? questions : [];
   } catch (error) {
     console.error("Gemini API Error:", error);
+    // Returning meaningful defaults on error
     return [
-      "Can you describe your relevant experience?",
-      "Why are you interested in this role?",
-      "How do you deal with pressure?",
-      "What are your technical strengths?",
-      "Where do you see yourself in 5 years?"
+      { text: "Can you describe your relevant experience?", type: "Background" },
+      { text: "Why are you interested in this role?", type: "Background" },
+      { text: "How do you deal with pressure?", type: "Situational" },
+      { text: "What are your technical strengths?", type: "Technical" },
+      { text: "Where do you see yourself in 5 years?", type: "Background" }
     ];
   }
 };
 
 export const generateSpeech = async (text: string): Promise<Uint8Array | null> => {
-  if (!apiKey) return null;
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
@@ -98,7 +95,7 @@ export const generateSpeech = async (text: string): Promise<Uint8Array | null> =
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) return null;
 
-    // Decode base64 to Uint8Array
+    // Fix: Implemented manual decode function for base64 as suggested in the coding guidelines
     const binaryString = atob(base64Audio);
     const len = binaryString.length;
     const bytes = new Uint8Array(len);

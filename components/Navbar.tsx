@@ -7,9 +7,10 @@ interface NavbarProps {
   onForward: () => void;
   canGoBack: boolean;
   canGoForward: boolean;
+  backLabel?: string;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onBack, onForward, canGoBack, canGoForward }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onBack, onForward, canGoBack, canGoForward, backLabel }) => {
   const [isSoundOn, setIsSoundOn] = useState(getSoundEnabled());
 
   const toggleSound = () => {
@@ -20,20 +21,27 @@ export const Navbar: React.FC<NavbarProps> = ({ onBack, onForward, canGoBack, ca
   return (
     <nav className="sticky top-0 z-50 bg-white h-20 flex items-center border-b border-slate-100/50 shadow-sm">
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-        {/* Left Side: Back Button */}
-        <button 
-          onClick={onBack} 
-          onMouseEnter={playHoverSound}
-          disabled={!canGoBack}
-          className={`
-            w-12 h-12 flex items-center justify-center rounded-[20px] transition-all duration-200 text-black
-            ${canGoBack 
-              ? 'bg-[#D9D9D9]/30 hover:bg-[#D9D9D9]/60 cursor-pointer' 
-              : 'bg-[#D9D9D9]/10 cursor-default opacity-50'}
-          `}
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
+        {/* Left Side: Back Button with Label */}
+        <div className="flex items-center space-x-4">
+          <button 
+            onClick={onBack} 
+            onMouseEnter={playHoverSound}
+            disabled={!canGoBack}
+            className={`
+              w-12 h-12 flex items-center justify-center rounded-[20px] transition-all duration-200 text-black
+              ${canGoBack 
+                ? 'bg-[#D9D9D9]/30 hover:bg-[#D9D9D9]/60 cursor-pointer' 
+                : 'bg-[#D9D9D9]/10 cursor-default opacity-50'}
+            `}
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          {canGoBack && backLabel && (
+            <span className="text-xl font-semibold text-slate-800 animate-fade-in hidden sm:inline truncate max-w-[200px] md:max-w-md">
+              {backLabel}
+            </span>
+          )}
+        </div>
 
         {/* Right Side: Sound Toggle & Forward Button */}
         <div className="flex items-center space-x-4">

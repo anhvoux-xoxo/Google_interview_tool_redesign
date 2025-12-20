@@ -27,15 +27,14 @@ export const FieldSelection: React.FC<FieldSelectionProps> = ({
               key={cat}
               onMouseEnter={playHoverSound}
               onClick={() => onSelectCategory(cat)}
-              // Updated soft shadows with ambient glow hover using purple tints
               className={`
-                w-full text-left p-6 rounded-2xl border transition-all duration-200
+                w-full text-left p-6 rounded-2xl border-2 transition-all duration-200 transform active:scale-[0.99]
                 ${selectedCategory === cat 
-                  ? 'bg-white border-blue-200 shadow-[0_10px_30px_rgba(90,85,120,0.15)] ring-1 ring-blue-100' 
-                  : 'bg-white border-transparent shadow-[0_10px_30px_rgba(90,85,120,0.15)] hover:shadow-[0_16px_40px_rgba(165,155,250,0.22)]'}
+                  ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-[0_10px_30px_rgba(37,99,235,0.1)]' 
+                  : 'bg-white border-transparent text-slate-800 shadow-[0_10px_30px_rgba(90,85,120,0.15)] hover:border-blue-400 hover:text-blue-600 hover:shadow-[0_16px_40px_rgba(165,155,250,0.22)]'}
               `}
             >
-              <span className={`text-lg font-medium ${selectedCategory === cat ? 'text-blue-700' : 'text-slate-800'}`}>
+              <span className="text-lg font-semibold">
                 {cat}
               </span>
             </button>
